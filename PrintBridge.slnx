@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/PrintBridge.Application/PrintBridge.Application.csproj" />
+    <Project Path="src/PrintBridge.Blazor/PrintBridge.Blazor.csproj" />
+    <Project Path="src/PrintBridge.Domain/PrintBridge.Domain.csproj" />
+    <Project Path="src/PrintBridge.Infrastructure/PrintBridge.Infrastructure.csproj" />
+    <Project Path="src/PrintBridge.WebApi/PrintBridge.WebApi.csproj" />
+  </Folder>
+</Solution>

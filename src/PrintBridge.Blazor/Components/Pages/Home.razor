@@ -1,0 +1,51 @@
+﻿@page "/home"
+@attribute [Authorize]
+@using System.Security.Claims
+@using Microsoft.IdentityModel.JsonWebTokens
+@rendermode InteractiveServer
+@inject JWTAuthenticationStateProvider AuthStateProvider
+@inject AccessTokenService AccessTokenService
+
+<!-- Page Content  -->
+
+    
+	<AuthorizeView>
+	<Table />
+	</AuthorizeView>
+
+
+@code{
+	public int UserId { get; set; }
+	public string Email { get; set; } = string.Empty;
+	public string Username { get; set; }=string.Empty;
+	public string Role { get; set; } = string.Empty;
+	public string Token { get; set; } = string.Empty;
+	public DateTime TokenExpired { get; set;}
+	public DateTime CurrentTime { get; set; }
+
+	protected override async Task OnInitializedAsync()
+	{
+	  await InitialValues();
+	}
+
+	private async Task InitialValues()
+	{
+		var state = await AuthStateProvider.GetAuthenticationStateAsync();
+		var user = state.User;
+		if (user.Identity!.IsAuthenticated)
+		{
+			Token = await AccessTokenService.GetToken();
+			Email = user.Claims.FirstOrDefault(x => x.Type == ClaimTypes.Email)?.Value!;
+			Role = user.Claims.FirstOrDefault(x => x.Type == ClaimTypes.Role)?.Value!;
+			UserId =int.Parse(user.Claims.FirstOrDefault(x => x.Type == ClaimTypes.NameIdentifier)?.Value!);
+			var expires = user.Claims.FirstOrDefault(x => x.Type == JwtRegisteredClaimNames.Exp)!.Value;
+
+			if(long.TryParse(expires,out var exp))
+			{
+				TokenExpired = DateTimeOffset.FromUnixTimeSeconds(exp).LocalDateTime;
+			}
+
+		}
+	}
+}
+
