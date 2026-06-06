@@ -1,0 +1,408 @@
+@page "/users"
+@attribute [Authorize]
+@using System.Security.Claims
+@using Microsoft.IdentityModel.JsonWebTokens
+@using PrintBridge.Blazor.DTO.Users
+@using PrintBridge.Blazor.Services
+@rendermode InteractiveServer
+@inject JWTAuthenticationStateProvider AuthStateProvider
+@inject AccessTokenService AccessTokenService
+@inject UserApiService UserApi
+
+<AuthorizeView>
+<body class="layout-fixed sidebar-expand-lg bg-body-tertiary">
+<div class="app-wrapper">
+
+    <AdminHeader />
+    <AdminSidebar />
+
+    <main class="app-main">
+
+        <div class="app-content-header">
+            <div class="container-fluid">
+                <div class="row">
+                    <div class="col-sm-6"><h3 class="mb-0">User Management</h3></div>
+                    <div class="col-sm-6">
+                        <ol class="breadcrumb float-sm-end">
+                            <li class="breadcrumb-item"><a href="/">Home</a></li>
+                            <li class="breadcrumb-item active">User Management</li>
+                        </ol>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="app-content">
+            <div class="container-fluid">
+
+                @if (!string.IsNullOrEmpty(globalError))
+                {
+                    <div class="alert alert-danger alert-dismissible" role="alert">
+                        @globalError
+                        <button type="button" class="btn-close" @onclick="() => globalError = null"></button>
+                    </div>
+                }
+                @if (!string.IsNullOrEmpty(globalSuccess))
+                {
+                    <div class="alert alert-success alert-dismissible" role="alert">
+                        @globalSuccess
+                        <button type="button" class="btn-close" @onclick="() => globalSuccess = null"></button>
+                    </div>
+                }
+
+                <div class="row">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <h5 class="card-title mb-0">
+                                    <i class="bi bi-people me-1"></i> User Management
+                                    <small class="text-muted ms-1">GET /api/users</small>
+                                </h5>
+                                <div class="d-flex gap-2">
+                                    <button class="btn btn-sm btn-outline-secondary" @onclick="LoadUsersAsync">
+                                        <i class="bi bi-arrow-clockwise"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-primary" @onclick="OpenCreateModal">
+                                        <i class="bi bi-plus-lg"></i> Add User
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="card-body p-0">
+                                @if (loadingUsers)
+                                {
+                                    <div class="text-center py-4">
+                                        <div class="spinner-border spinner-border-sm text-primary"></div>
+                                        <span class="ms-2 text-muted">Loading users…</span>
+                                    </div>
+                                }
+                                else if (users == null)
+                                {
+                                    <p class="text-danger p-3 mb-0">@usersError</p>
+                                }
+                                else if (users.Count == 0)
+                                {
+                                    <p class="text-muted p-3 mb-0">No users found.</p>
+                                }
+                                else
+                                {
+                                    <div class="table-responsive">
+                                        <table class="table table-hover table-sm mb-0">
+                                            <thead class="table-light">
+                                                <tr>
+                                                    <th>#</th>
+                                                    <th>Username</th>
+                                                    <th>Full Name</th>
+                                                    <th>Email</th>
+                                                    <th>Role</th>
+                                                    <th>Status</th>
+                                                    <th>Actions</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @foreach (var u in users)
+                                                {
+                                                    var user = u;
+                                                    <tr>
+                                                        <td>@user.Id</td>
+                                                        <td><strong>@user.Username</strong></td>
+                                                        <td>@(user.FullName ?? "-")</td>
+                                                        <td><small>@user.Email</small></td>
+                                                        <td><span class="@RoleBadge(user.Role)">@user.RoleLabel</span></td>
+                                                        <td>
+                                                            <span class="@(user.IsActive ? "badge bg-success" : "badge bg-secondary")">
+                                                                @(user.IsActive ? "Active" : "Inactive")
+                                                            </span>
+                                                        </td>
+                                                        <td>
+                                                            <button class="btn btn-xs btn-sm btn-outline-primary me-1"
+                                                                    @onclick="() => OpenEditModal(user)"
+                                                                    title="PUT /api/users/{id}">
+                                                                <i class="bi bi-pencil"></i>
+                                                            </button>
+                                                            <button class="btn btn-xs btn-sm btn-outline-danger"
+                                                                    @onclick="() => OpenDeleteModal(user)"
+                                                                    title="DELETE /api/users/{id}">
+                                                                <i class="bi bi-trash"></i>
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                }
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                }
+                            </div>
+                            <div class="card-footer text-muted small">
+                                @(users?.Count ?? 0) user(s) · last refreshed @lastUsersRefresh.ToString("HH:mm:ss")
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <AdminFooter />
+    </main>
+</div>
+
+@if (showCreateModal)
+{
+    <div class="modal d-block" tabindex="-1" style="background:rgba(0,0,0,.5)">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Create User <small class="text-muted">POST /api/users</small></h5>
+                    <button type="button" class="btn-close" @onclick="CloseModals"></button>
+                </div>
+                <div class="modal-body">
+                    @if (!string.IsNullOrEmpty(modalError))
+                    {
+                        <div class="alert alert-danger py-2">@modalError</div>
+                    }
+                    <div class="mb-2">
+                        <label class="form-label">Username <span class="text-danger">*</span></label>
+                        <input class="form-control" @bind="createForm.Username" placeholder="johndoe" />
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label">Email <span class="text-danger">*</span></label>
+                        <input class="form-control" type="email" @bind="createForm.Email" placeholder="john@example.com" />
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label">Password <span class="text-danger">*</span></label>
+                        <input class="form-control" type="password" @bind="createForm.Password" />
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label">Full Name</label>
+                        <input class="form-control" @bind="createForm.FullName" placeholder="John Doe" />
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="isAdminCreate" @bind="createForm.IsAdmin" />
+                        <label class="form-check-label" for="isAdminCreate">Admin role</label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="CloseModals">Cancel</button>
+                    <button class="btn btn-primary" @onclick="CreateUserAsync" disabled="@modalBusy">
+                        @(modalBusy ? "Creating…" : "Create User")
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@if (showEditModal && editTarget != null)
+{
+    <div class="modal d-block" tabindex="-1" style="background:rgba(0,0,0,.5)">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        Edit <strong>@editTarget.Username</strong>
+                        <small class="text-muted">PUT /api/users/@editTarget.Id</small>
+                    </h5>
+                    <button type="button" class="btn-close" @onclick="CloseModals"></button>
+                </div>
+                <div class="modal-body">
+                    @if (!string.IsNullOrEmpty(modalError))
+                    {
+                        <div class="alert alert-danger py-2">@modalError</div>
+                    }
+                    <div class="mb-2">
+                        <label class="form-label">Email</label>
+                        <input class="form-control" type="email" @bind="editForm.Email" />
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label">Full Name</label>
+                        <input class="form-control" @bind="editForm.FullName" />
+                    </div>
+                    <div class="form-check mb-2">
+                        <input class="form-check-input" type="checkbox" id="isActiveEdit" @bind="editFormIsActive" />
+                        <label class="form-check-label" for="isActiveEdit">Active</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="isAdminEdit" @bind="editFormIsAdmin" />
+                        <label class="form-check-label" for="isAdminEdit">Admin role</label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="CloseModals">Cancel</button>
+                    <button class="btn btn-primary" @onclick="UpdateUserAsync" disabled="@modalBusy">
+                        @(modalBusy ? "Saving…" : "Save Changes")
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@if (showDeleteModal && deleteTarget != null)
+{
+    <div class="modal d-block" tabindex="-1" style="background:rgba(0,0,0,.5)">
+        <div class="modal-dialog modal-sm">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title">Delete User</h5>
+                    <button type="button" class="btn-close btn-close-white" @onclick="CloseModals"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Delete <strong>@deleteTarget.Username</strong>?</p>
+                    <small class="text-muted">DELETE /api/users/@deleteTarget.Id</small>
+                    @if (!string.IsNullOrEmpty(modalError))
+                    {
+                        <div class="alert alert-danger py-2 mt-2">@modalError</div>
+                    }
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary btn-sm" @onclick="CloseModals">Cancel</button>
+                    <button class="btn btn-danger btn-sm" @onclick="DeleteUserAsync" disabled="@modalBusy">
+                        @(modalBusy ? "Deleting…" : "Delete")
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+</body>
+</AuthorizeView>
+
+@code {
+    private List<AccountDto>? users;
+    private bool loadingUsers;
+    private string? usersError;
+    private DateTime lastUsersRefresh;
+
+    private bool showCreateModal;
+    private bool showEditModal;
+    private bool showDeleteModal;
+    private bool modalBusy;
+    private string? modalError;
+    private AccountDto? editTarget;
+    private AccountDto? deleteTarget;
+    private CreateUserRequest createForm = new();
+    private UpdateUserRequest editForm = new();
+    private bool editFormIsActive;
+    private bool editFormIsAdmin;
+
+    private string? globalError;
+    private string? globalSuccess;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadUsersAsync();
+    }
+
+    private async Task LoadUsersAsync()
+    {
+        loadingUsers = true;
+        usersError = null;
+        var (list, error) = await UserApi.GetAllAsync();
+        users = list;
+        usersError = error;
+        loadingUsers = false;
+        lastUsersRefresh = DateTime.Now;
+    }
+
+    private void OpenCreateModal()
+    {
+        createForm = new CreateUserRequest();
+        modalError = null;
+        showCreateModal = true;
+    }
+
+    private void OpenEditModal(AccountDto u)
+    {
+        editTarget = u;
+        editForm = new UpdateUserRequest { Email = u.Email, FullName = u.FullName };
+        editFormIsActive = u.IsActive;
+        editFormIsAdmin = u.Role == 1;
+        modalError = null;
+        showEditModal = true;
+    }
+
+    private void OpenDeleteModal(AccountDto u)
+    {
+        deleteTarget = u;
+        modalError = null;
+        showDeleteModal = true;
+    }
+
+    private void CloseModals()
+    {
+        showCreateModal = showEditModal = showDeleteModal = false;
+        editTarget = deleteTarget = null;
+        modalError = null;
+    }
+
+    private async Task CreateUserAsync()
+    {
+        if (string.IsNullOrWhiteSpace(createForm.Username) ||
+            string.IsNullOrWhiteSpace(createForm.Email) ||
+            string.IsNullOrWhiteSpace(createForm.Password))
+        {
+            modalError = "Username, email, and password are required.";
+            return;
+        }
+        modalBusy = true;
+        var (created, error) = await UserApi.CreateAsync(createForm);
+        modalBusy = false;
+        if (created != null)
+        {
+            globalSuccess = $"User '{created.Username}' created.";
+            CloseModals();
+            await LoadUsersAsync();
+        }
+        else
+        {
+            modalError = error;
+        }
+    }
+
+    private async Task UpdateUserAsync()
+    {
+        if (editTarget == null) return;
+        modalBusy = true;
+        editForm.IsActive = editFormIsActive;
+        editForm.IsAdmin = editFormIsAdmin;
+        var error = await UserApi.UpdateAsync(editTarget.Id, editForm);
+        modalBusy = false;
+        if (error == null)
+        {
+            globalSuccess = $"User '{editTarget.Username}' updated.";
+            CloseModals();
+            await LoadUsersAsync();
+        }
+        else
+        {
+            modalError = error;
+        }
+    }
+
+    private async Task DeleteUserAsync()
+    {
+        if (deleteTarget == null) return;
+        modalBusy = true;
+        var error = await UserApi.DeleteAsync(deleteTarget.Id);
+        modalBusy = false;
+        if (error == null)
+        {
+            globalSuccess = $"User '{deleteTarget.Username}' deleted.";
+            CloseModals();
+            await LoadUsersAsync();
+        }
+        else
+        {
+            modalError = error;
+        }
+    }
+
+    private static string RoleBadge(int role) => role switch
+    {
+        1 => "badge bg-danger",
+        2 => "badge bg-primary",
+        3 => "badge bg-warning text-dark",
+        _ => "badge bg-secondary"
+    };
+}

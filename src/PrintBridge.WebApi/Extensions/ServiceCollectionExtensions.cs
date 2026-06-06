@@ -4,6 +4,7 @@ using PrintBridge.Domain.Interfaces;
 using PrintBridge.Infrastructure.Options;
 using PrintBridge.Infrastructure.Repositories;
 using PrintBridge.Infrastructure.Services;
+using PrintBridge.Infrastructure.Services.Printer;
 
 namespace PrintBridge.WebApi.Extensions;
 public static class ServiceCollectionExtensions
@@ -13,28 +14,29 @@ public static class ServiceCollectionExtensions
         services.Configure<EmailSettings>(configuration.GetSection("EmailSettings"));
 
         // Application Services Layer
-
         services.AddScoped<IAuthenticationService, AuthenticationService>();
 
         // Infrastructure Services
         services.AddScoped<IPasswordHasher, PasswordHasher>();
         services.AddScoped<ITokenService, TokenService>();
-        // Email service uses IOptions<EmailSettings>
         services.AddScoped<IEmailService, SmtpEmailService>();
 
         // Repositories
-
         services.AddScoped<IAccountRepository, AccountRepository>();
 
-
-        // Register user services & repository (add near other services)
+        // User services
         services.AddScoped<IUserService, UserService>();
-      
-        // AutoMapper - Object-to-object mapping
+
+        // AutoMapper
         services.AddAutoMapper(cfg => cfg.AddProfile<MappingProfile>());
 
-
-
+        // ── Printer Services ─────────────────────────────────────────────────
+        var logDir = configuration["Printer:LogDirectory"] ?? "logs";
+        services.AddSingleton(new PrintLogRepository(logDir));
+        services.AddSingleton<UsbPrinterConnection>();
+        services.AddSingleton<LanPrinterConnection>();
+        services.AddSingleton<PrinterManager>();
+        services.AddHostedService(sp => sp.GetRequiredService<PrinterManager>());
 
         return services;
     }

@@ -1,0 +1,448 @@
+@page "/printer"
+@rendermode InteractiveServer
+@using PrintBridge.Blazor.DTO.Printer
+@using PrintBridge.Blazor.Services
+@inject PrinterApiService Api
+@implements IDisposable
+
+<PageTitle>Thermal Printer Dashboard</PageTitle>
+
+<AuthorizeView>
+<body class="layout-fixed sidebar-expand-lg bg-body-tertiary">
+<div class="app-wrapper">
+
+    <AdminHeader />
+    <AdminSidebar />
+
+    <main class="app-main">
+
+        <div class="app-content-header">
+            <div class="container-fluid">
+                <div class="row">
+                    <div class="col-sm-6">
+                        <h3 class="mb-0">
+                            Printer Dashboard
+                            <span class="@(status?.IsConnected == true ? "badge bg-success ms-2" : "badge bg-danger ms-2") fs-6 align-middle">
+                                @(status?.IsConnected == true ? "CONNECTED" : "DISCONNECTED")
+                            </span>
+                        </h3>
+                    </div>
+                    <div class="col-sm-6">
+                        <ol class="breadcrumb float-sm-end">
+                            <li class="breadcrumb-item"><a href="/">Home</a></li>
+                            <li class="breadcrumb-item active">Printer Dashboard</li>
+                        </ol>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="app-content">
+            <div class="container-fluid">
+
+    @if (!string.IsNullOrEmpty(bannerError))
+    {
+        <div class="alert alert-danger alert-dismissible" role="alert">
+            <strong>Printer Error:</strong> @bannerError
+            <button type="button" class="btn-close" @onclick="() => bannerError = null"></button>
+        </div>
+    }
+    @if (!string.IsNullOrEmpty(successMsg))
+    {
+        <div class="alert alert-success alert-dismissible" role="alert">
+            @successMsg
+            <button type="button" class="btn-close" @onclick="() => successMsg = null"></button>
+        </div>
+    }
+
+    <div class="row g-3">
+
+        <!-- Connection Panel -->
+        <div class="col-md-4">
+            <div class="card h-100">
+                <div class="card-header fw-bold">Connection</div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label">Mode</label>
+                        <div class="btn-group w-100" role="group">
+                            <button class="@ConnectBtnClass("usb")" @onclick='() => connectMode = "usb"'>USB</button>
+                            <button class="@ConnectBtnClass("lan")" @onclick='() => connectMode = "lan"'>LAN / Ethernet</button>
+                        </div>
+                    </div>
+                    @if (connectMode == "lan")
+                    {
+                        <div class="mb-2">
+                            <label class="form-label">IP Address</label>
+                            <input class="form-control" @bind="lanIp" placeholder="192.168.1.100" />
+                        </div>
+                        <div class="mb-2">
+                            <label class="form-label">Port</label>
+                            <input class="form-control" @bind="lanPort" placeholder="9100" type="number" />
+                        </div>
+                    }
+                    <button class="btn btn-success w-100" @onclick="ConnectAsync" disabled="@connecting">
+                        @(connecting ? "Connecting..." : "Connect")
+                    </button>
+                    @if (!string.IsNullOrEmpty(connectError))
+                    {
+                        <div class="text-danger small mt-1">@connectError</div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Printer Status Panel -->
+        <div class="col-md-4">
+            <div class="card h-100">
+                <div class="card-header fw-bold">Printer Status</div>
+                <div class="card-body">
+                    @if (status != null)
+                    {
+                        <table class="table table-sm mb-0">
+                            <tbody>
+                                <tr>
+                                    <td>Active Mode</td>
+                                    <td><span class="badge bg-info">@(status.ActiveMode?.ToUpper() ?? "-")</span></td>
+                                </tr>
+                                <tr>
+                                    <td>Paper</td>
+                                    <td>
+                                        <span class="@PaperBadge(status.PaperStatus)">@status.PaperStatus.ToUpper()</span>
+                                        @if (status.PaperRemainingPercent.HasValue)
+                                        {
+                                            <small class="ms-1 text-muted">@status.PaperRemainingPercent.Value.ToString("F0")%</small>
+                                        }
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>Cover</td>
+                                    <td>
+                                        <span class="@(status.CoverStatus == "closed" ? "badge bg-success" : "badge bg-warning text-dark")">
+                                            @status.CoverStatus.ToUpper()
+                                        </span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>Temperature</td>
+                                    <td>
+                                        <span class="@(status.TemperatureCelsius > 68 ? "text-danger" : "")">
+                                            @status.TemperatureCelsius?.ToString("F1") °C
+                                        </span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>Queue</td>
+                                    <td>@status.QueueDepth pending / @status.FailedCount failed</td>
+                                </tr>
+                                @if (status.EstimatedPrintsRemaining.HasValue)
+                                {
+                                    <tr>
+                                        <td>Est. Prints Left</td>
+                                        <td>~@status.EstimatedPrintsRemaining</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    }
+                    else
+                    {
+                        <p class="text-muted">Loading status...</p>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Print Panel -->
+        <div class="col-md-4">
+            <div class="card h-100">
+                <div class="card-header fw-bold">Print</div>
+                <div class="card-body">
+                    <ul class="nav nav-tabs mb-3">
+                        <li class="nav-item">
+                            <a class="@TabClass("text")" href="#" @onclick='() => printTab = "text"' @onclick:preventDefault>Text</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="@TabClass("image")" href="#" @onclick='() => printTab = "image"' @onclick:preventDefault>Image</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="@TabClass("qr")" href="#" @onclick='() => printTab = "qr"' @onclick:preventDefault>QR</a>
+                        </li>
+                    </ul>
+
+                    @if (printTab == "text")
+                    {
+                        <div class="mb-2">
+                            <label class="form-label">Text Content</label>
+                            <textarea class="form-control" rows="3" @bind="printText" placeholder="Receipt content..."></textarea>
+                        </div>
+                        <div class="mb-2">
+                            <label class="form-label">Language</label>
+                            <select class="form-select" @bind="printLanguage">
+                                <option value="tr">Türkçe</option>
+                                <option value="en">English</option>
+                            </select>
+                        </div>
+                        <button class="btn btn-primary w-100" @onclick="PrintTextAsync" disabled="@printing">
+                            @(printing ? "Printing..." : "Print Text")
+                        </button>
+                    }
+                    else if (printTab == "image")
+                    {
+                        <div class="mb-2">
+                            <label class="form-label">Image (Base64)</label>
+                            <textarea class="form-control" rows="3" @bind="imageBase64" placeholder="Paste base64-encoded image..."></textarea>
+                        </div>
+                        <button class="btn btn-primary w-100" @onclick="PrintImageAsync" disabled="@printing">
+                            @(printing ? "Printing..." : "Print Image")
+                        </button>
+                    }
+                    else
+                    {
+                        <div class="mb-2">
+                            <label class="form-label">QR Content (URL or text)</label>
+                            <input class="form-control" @bind="qrContent" placeholder="https://example.com" />
+                        </div>
+                        <button class="btn btn-primary w-100" @onclick="PrintQrAsync" disabled="@printing">
+                            @(printing ? "Printing..." : "Print QR")
+                        </button>
+                    }
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Simulate Errors -->
+    <div class="card mt-3">
+        <div class="card-header fw-bold">Simulate Errors <small class="text-muted">(for testing)</small></div>
+        <div class="card-body d-flex flex-wrap gap-2">
+            @foreach (var code in new[] { "PAPER_OUT", "PAPER_JAM", "COVER_OPEN", "OVERHEAT", "COMM_ERROR" })
+            {
+                var c = code;
+                <button class="btn btn-sm btn-outline-danger" @onclick="() => SimulateErrorAsync(c)">Inject @c</button>
+            }
+            @foreach (var code in new[] { "PAPER_OUT", "COVER_OPEN", "OVERHEAT" })
+            {
+                var c = code;
+                <button class="btn btn-sm btn-outline-success" @onclick="() => ClearErrorAsync(c)">Clear @c</button>
+            }
+        </div>
+    </div>
+
+    <!-- Job Queue -->
+    <div class="card mt-3 mb-3">
+        <div class="card-header fw-bold d-flex justify-content-between align-items-center">
+            <span>Job Queue</span>
+            <button class="btn btn-sm btn-outline-secondary" @onclick="RefreshJobsAsync">Refresh</button>
+        </div>
+        <div class="card-body p-0">
+            @if (jobs?.Items.Count > 0)
+            {
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Job ID</th>
+                                <th>Operation</th>
+                                <th>Mode</th>
+                                <th>Status</th>
+                                <th>Error</th>
+                                <th>Retries</th>
+                                <th>Time</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var job in jobs.Items)
+                            {
+                                var j = job;
+                                <tr>
+                                    <td><code>@j.JobId</code></td>
+                                    <td>@j.Operation</td>
+                                    <td><span class="badge bg-secondary">@j.Connection.ToUpper()</span></td>
+                                    <td><span class="@StatusBadge(j.Status)">@j.Status.ToUpper()</span></td>
+                                    <td>
+                                        @if (j.ErrorCode != null)
+                                        {
+                                            <span class="text-danger" title="@j.ErrorDetail">@j.ErrorCode</span>
+                                        }
+                                    </td>
+                                    <td>@j.RetryCount</td>
+                                    <td><small>@j.CreatedAt.ToLocalTime().ToString("HH:mm:ss")</small></td>
+                                    <td>
+                                        @if (j.Status == "failed")
+                                        {
+                                            <button class="btn btn-sm btn-warning" @onclick="() => ReprintAsync(j.JobId)">
+                                                Tekrar Bastır
+                                            </button>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+            else
+            {
+                <p class="text-muted p-3 mb-0">No jobs yet.</p>
+            }
+        </div>
+    </div>
+
+            </div>
+        </div>
+
+        <AdminFooter />
+    </main>
+</div>
+</body>
+</AuthorizeView>
+
+@code {
+    private PrinterStatusResponse? status;
+    private JobListResponse? jobs;
+
+    private string connectMode = "usb";
+    private string lanIp = "192.168.1.100";
+    private int lanPort = 9100;
+    private bool connecting;
+    private string? connectError;
+
+    private string printTab = "text";
+    private string printText = string.Empty;
+    private string printLanguage = "tr";
+    private string imageBase64 = string.Empty;
+    private string qrContent = string.Empty;
+    private bool printing;
+
+    private string? bannerError;
+    private string? successMsg;
+
+    private System.Threading.Timer? _pollTimer;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await RefreshStatusAsync();
+        await RefreshJobsAsync();
+
+        _pollTimer = new System.Threading.Timer(async _ =>
+        {
+            await RefreshStatusAsync();
+            await RefreshJobsAsync();
+            await InvokeAsync(StateHasChanged);
+        }, null, 3000, 3000);
+    }
+
+    private async Task RefreshStatusAsync()
+    {
+        status = await Api.GetStatusAsync();
+        if (status?.LastError != null && bannerError == null)
+            bannerError = status.LastError;
+    }
+
+    private async Task RefreshJobsAsync()
+    {
+        jobs = await Api.GetJobsAsync(pageSize: 50);
+    }
+
+    private async Task ConnectAsync()
+    {
+        connecting = true;
+        connectError = null;
+        var req = new ConnectRequest
+        {
+            Mode = connectMode,
+            IpAddress = connectMode == "lan" ? lanIp : null,
+            Port = connectMode == "lan" ? lanPort : null
+        };
+        var (ok, message) = await Api.ConnectAsync(req);
+        if (ok) successMsg = message;
+        else connectError = message;
+        connecting = false;
+        await RefreshStatusAsync();
+    }
+
+    private async Task PrintTextAsync()
+    {
+        if (string.IsNullOrWhiteSpace(printText)) return;
+        printing = true;
+        var (ok, job, error) = await Api.PrintTextAsync(new PrintTextRequest
+        {
+            Text = printText,
+            Language = printLanguage
+        });
+        HandlePrintResult(ok, job, error);
+        printing = false;
+        await RefreshJobsAsync();
+    }
+
+    private async Task PrintImageAsync()
+    {
+        if (string.IsNullOrWhiteSpace(imageBase64)) return;
+        printing = true;
+        var (ok, job, error) = await Api.PrintImageAsync(new PrintImageRequest { ImageBase64 = imageBase64 });
+        HandlePrintResult(ok, job, error);
+        printing = false;
+        await RefreshJobsAsync();
+    }
+
+    private async Task PrintQrAsync()
+    {
+        if (string.IsNullOrWhiteSpace(qrContent)) return;
+        printing = true;
+        var (ok, job, error) = await Api.PrintQrAsync(new PrintQrRequest { Content = qrContent });
+        HandlePrintResult(ok, job, error);
+        printing = false;
+        await RefreshJobsAsync();
+    }
+
+    private async Task ReprintAsync(string jobId)
+    {
+        var (ok, job, error) = await Api.ReprintAsync(jobId);
+        if (ok) successMsg = $"Reprint queued as job {job?.JobId}";
+        else bannerError = error;
+        await RefreshJobsAsync();
+    }
+
+    private async Task SimulateErrorAsync(string code)
+    {
+        await Api.SimulateErrorAsync(code);
+        await RefreshStatusAsync();
+    }
+
+    private async Task ClearErrorAsync(string code)
+    {
+        await Api.ClearErrorAsync(code);
+        bannerError = null;
+        await RefreshStatusAsync();
+    }
+
+    private void HandlePrintResult(bool ok, PrintJobResponse? job, string error)
+    {
+        if (ok) successMsg = $"Job {job?.JobId} queued ({job?.Operation})";
+        else bannerError = error;
+    }
+
+    private string TabClass(string tab) => printTab == tab ? "nav-link active" : "nav-link";
+    private string ConnectBtnClass(string mode) => connectMode == mode ? "btn btn-primary" : "btn btn-outline-primary";
+
+    private static string StatusBadge(string s) => s switch
+    {
+        "completed" => "badge bg-success",
+        "failed"    => "badge bg-danger",
+        "processing"=> "badge bg-primary",
+        "retrying"  => "badge bg-warning text-dark",
+        _           => "badge bg-secondary"
+    };
+
+    private static string PaperBadge(string paper) => paper switch
+    {
+        "ok"  => "badge bg-success",
+        "low" => "badge bg-warning text-dark",
+        "out" => "badge bg-danger",
+        _     => "badge bg-secondary"
+    };
+
+    public void Dispose() => _pollTimer?.Dispose();
+}

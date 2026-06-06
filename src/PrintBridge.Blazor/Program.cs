@@ -12,6 +12,8 @@ builder.Services.AddRazorComponents()
 builder.Services.AddScoped<CookieService>();
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<AccessTokenService>();
+builder.Services.AddScoped<PrinterApiService>();
+builder.Services.AddScoped<UserApiService>();
 builder.Services.AddHttpClient("ApiClient", op =>
 {
     op.BaseAddress = new Uri("http://localhost:5160/");

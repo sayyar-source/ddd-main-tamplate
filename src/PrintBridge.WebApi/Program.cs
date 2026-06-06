@@ -155,6 +155,16 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 
+// GET /health — printer health check (bonus)
+app.MapGet("/health", (PrintBridge.Infrastructure.Services.Printer.PrinterManager printer) =>
+{
+    var status = printer.GetStatus();
+    var healthy = status.IsConnected && status.PaperStatus != "out" && status.CoverStatus == "closed";
+    return healthy
+        ? Results.Ok(new { status = "healthy", printer = status })
+        : Results.Json(new { status = "degraded", printer = status }, statusCode: 503);
+}).WithTags("Health");
+
 // ========================================
 // AUTO-OPEN SWAGGER WHEN APP STARTS
 // ========================================

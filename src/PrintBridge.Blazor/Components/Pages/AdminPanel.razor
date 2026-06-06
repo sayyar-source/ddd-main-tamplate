@@ -1,490 +1,480 @@
-﻿@page "/"
+@page "/"
 @attribute [Authorize]
 @using System.Security.Claims
 @using Microsoft.IdentityModel.JsonWebTokens
+@using PrintBridge.Blazor.DTO.Users
+@using PrintBridge.Blazor.DTO.Printer
+@using PrintBridge.Blazor.Services
 @rendermode InteractiveServer
 @inject JWTAuthenticationStateProvider AuthStateProvider
 @inject AccessTokenService AccessTokenService
+@inject UserApiService UserApi
+@inject PrinterApiService PrinterApi
+@implements IDisposable
 
 <AuthorizeView>
 <body class="layout-fixed sidebar-expand-lg bg-body-tertiary">
-    <!--begin::App Wrapper-->
-    <div class="app-wrapper">
-        <!--begin::Header-->
-         <AdminHeader/>
-        <!--end::Header-->
-        <!--begin::Sidebar-->
-       <AdminSidebar/>
-        <!--end::Sidebar-->
-        <!--begin::App Main-->
-        <main class="app-main">
-            <!--begin::App Content Header-->
-            <div class="app-content-header">
-                <!--begin::Container-->
-                <div class="container-fluid">
-                    <!--begin::Row-->
-                    <div class="row">
-                        <div class="col-sm-6">
-                            <h3 class="mb-0">Dashboard</h3>
-                        </div>
-                        <div class="col-sm-6">
-                            <ol class="breadcrumb float-sm-end">
-                                <li class="breadcrumb-item"><a href="#">Home</a></li>
-                                <li class="breadcrumb-item active" aria-current="page">Dashboard</li>
-                            </ol>
-                        </div>
+<div class="app-wrapper">
+
+    <AdminHeader />
+    <AdminSidebar />
+
+    <main class="app-main">
+
+        <!-- Page Header -->
+        <div class="app-content-header">
+            <div class="container-fluid">
+                <div class="row">
+                    <div class="col-sm-6"><h3 class="mb-0">Dashboard</h3></div>
+                    <div class="col-sm-6">
+                        <ol class="breadcrumb float-sm-end">
+                            <li class="breadcrumb-item"><a href="#">Home</a></li>
+                            <li class="breadcrumb-item active">Dashboard</li>
+                        </ol>
                     </div>
-                    <!--end::Row-->
                 </div>
-                <!--end::Container-->
             </div>
-            <!--end::App Content Header-->
-            <!--begin::App Content-->
-            <div class="app-content">
-                <!--begin::Container-->
-                <div class="container-fluid">
-                    <!--begin::Row-->
-                    <div class="row">
-                        <!--begin::Col-->
-                        <div class="col-lg-3 col-6">
-                            <!--begin::Small Box Widget 1-->
-                            <div class="small-box text-bg-primary">
-                                <div class="inner">
-                                    <h3>150</h3>
+        </div>
 
-                                    <p>New Orders</p>
-                                </div>
-                                <svg class="small-box-icon"
-                                     fill="currentColor"
-                                     viewBox="0 0 24 24"
-                                     xmlns="http://www.w3.org/2000/svg"
-                                     aria-hidden="true">
-                                    <path d="M2.25 2.25a.75.75 0 000 1.5h1.386c.17 0 .318.114.362.278l2.558 9.592a3.752 3.752 0 00-2.806 3.63c0 .414.336.75.75.75h15.75a.75.75 0 000-1.5H5.378A2.25 2.25 0 017.5 15h11.218a.75.75 0 00.674-.421 60.358 60.358 0 002.96-7.228.75.75 0 00-.525-.965A60.864 60.864 0 005.68 4.509l-.232-.867A1.875 1.875 0 003.636 2.25H2.25zM3.75 20.25a1.5 1.5 0 113 0 1.5 1.5 0 01-3 0zM16.5 20.25a1.5 1.5 0 113 0 1.5 1.5 0 01-3 0z"></path>
-                                </svg>
-                                <a href="#"
-                                       class="small-box-footer link-light link-underline-opacity-0 link-underline-opacity-50-hover">
-                                    More info <i class="bi bi-link-45deg"></i>
-                                </a>
-                            </div>
-                            <!--end::Small Box Widget 1-->
-                        </div>
-                        <!--end::Col-->
-                        <div class="col-lg-3 col-6">
-                            <!--begin::Small Box Widget 2-->
-                            <div class="small-box text-bg-success">
-                                <div class="inner">
-                                    <h3>53<sup class="fs-5">%</sup></h3>
+        <div class="app-content">
+            <div class="container-fluid">
 
-                                    <p>Bounce Rate</p>
-                                </div>
-                                <svg class="small-box-icon"
-                                     fill="currentColor"
-                                     viewBox="0 0 24 24"
-                                     xmlns="http://www.w3.org/2000/svg"
-                                     aria-hidden="true">
-                                    <path d="M18.375 2.25c-1.035 0-1.875.84-1.875 1.875v15.75c0 1.035.84 1.875 1.875 1.875h.75c1.035 0 1.875-.84 1.875-1.875V4.125c0-1.036-.84-1.875-1.875-1.875h-.75zM9.75 8.625c0-1.036.84-1.875 1.875-1.875h.75c1.036 0 1.875.84 1.875 1.875v11.25c0 1.035-.84 1.875-1.875 1.875h-.75a1.875 1.875 0 01-1.875-1.875V8.625zM3 13.125c0-1.036.84-1.875 1.875-1.875h.75c1.036 0 1.875.84 1.875 1.875v6.75c0 1.035-.84 1.875-1.875 1.875h-.75A1.875 1.875 0 013 19.875v-6.75z"></path>
-                                </svg>
-                                <a href="#"
-                                       class="small-box-footer link-light link-underline-opacity-0 link-underline-opacity-50-hover">
-                                    More info <i class="bi bi-link-45deg"></i>
-                                </a>
+                <!-- ══════════════════════════════════════
+                     STAT CARDS  (live API data)
+                     ══════════════════════════════════════ -->
+                <div class="row mb-3">
+                            <!-- Printer Connection -->
+                    <div class="col-lg-3 col-6">
+                        <div class="small-box @(printerStatus?.IsConnected == true ? "text-bg-success" : "text-bg-secondary")">
+                            <div class="inner">
+                                <h3>@(printerStatus?.IsConnected == true ? printerStatus.ActiveMode?.ToUpper() : "OFF")</h3>
+                                <p>Printer @(printerStatus?.IsConnected == true ? "Connected" : "Disconnected")</p>
                             </div>
-                            <!--end::Small Box Widget 2-->
+                            <svg class="small-box-icon" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                <path fill-rule="evenodd" d="M7.875 1.5C6.839 1.5 6 2.34 6 3.375v2.99c-.426.053-.851.11-1.274.174-1.454.218-2.476 1.483-2.476 2.917v6.294a3 3 0 003 3h.27l-.155 1.705A1.875 1.875 0 007.232 22.5h9.536a1.875 1.875 0 001.867-2.045l-.155-1.705h.27a3 3 0 003-3V9.456c0-1.434-1.022-2.7-2.476-2.917A48.716 48.716 0 0018 6.366V3.375c0-1.036-.84-1.875-1.875-1.875h-8.25zM16.5 6.205v-2.83A.375.375 0 0016.125 3h-8.25a.375.375 0 00-.375.375v2.83a49.353 49.353 0 019 0zm-.217 8.265c.03.29-.024.58-.165.844a.75.75 0 01-.656.386H8.538a.75.75 0 01-.656-.386 1.875 1.875 0 01-.165-.844l.006-.828a.75.75 0 01.75-.744h7.548a.75.75 0 01.75.744l.012.828z" clip-rule="evenodd" />
+                            </svg>
+                            <a href="/printer" class="small-box-footer link-light link-underline-opacity-0 link-underline-opacity-50-hover">
+                                Dashboard <i class="bi bi-link-45deg"></i>
+                            </a>
                         </div>
-                        <!--end::Col-->
-                        <div class="col-lg-3 col-6">
-                            <!--begin::Small Box Widget 3-->
-                            <div class="small-box text-bg-warning">
-                                <div class="inner">
-                                    <h3>44</h3>
-
-                                    <p>User Registrations</p>
-                                </div>
-                                <svg class="small-box-icon"
-                                     fill="currentColor"
-                                     viewBox="0 0 24 24"
-                                     xmlns="http://www.w3.org/2000/svg"
-                                     aria-hidden="true">
-                                    <path d="M6.25 6.375a4.125 4.125 0 118.25 0 4.125 4.125 0 01-8.25 0zM3.25 19.125a7.125 7.125 0 0114.25 0v.003l-.001.119a.75.75 0 01-.363.63 13.067 13.067 0 01-6.761 1.873c-2.472 0-4.786-.684-6.76-1.873a.75.75 0 01-.364-.63l-.001-.122zM19.75 7.5a.75.75 0 00-1.5 0v2.25H16a.75.75 0 000 1.5h2.25v2.25a.75.75 0 001.5 0v-2.25H22a.75.75 0 000-1.5h-2.25V7.5z"></path>
-                                </svg>
-                                <a href="#"
-                                       class="small-box-footer link-dark link-underline-opacity-0 link-underline-opacity-50-hover">
-                                    More info <i class="bi bi-link-45deg"></i>
-                                </a>
-                            </div>
-                            <!--end::Small Box Widget 3-->
-                        </div>
-                        <!--end::Col-->
-                        <div class="col-lg-3 col-6">
-                            <!--begin::Small Box Widget 4-->
-                            <div class="small-box text-bg-danger">
-                                <div class="inner">
-                                    <h3>65</h3>
-
-                                    <p>Unique Visitors</p>
-                                </div>
-                                <svg class="small-box-icon"
-                                     fill="currentColor"
-                                     viewBox="0 0 24 24"
-                                     xmlns="http://www.w3.org/2000/svg"
-                                     aria-hidden="true">
-                                    <path clip-rule="evenodd"
-                                          fill-rule="evenodd"
-                                          d="M2.25 13.5a8.25 8.25 0 018.25-8.25.75.75 0 01.75.75v6.75H18a.75.75 0 01.75.75 8.25 8.25 0 01-16.5 0z"></path>
-                                    <path clip-rule="evenodd"
-                                          fill-rule="evenodd"
-                                          d="M12.75 3a.75.75 0 01.75-.75 8.25 8.25 0 018.25 8.25.75.75 0 01-.75.75h-7.5a.75.75 0 01-.75-.75V3z"></path>
-                                </svg>
-                                <a href="#"
-                                       class="small-box-footer link-light link-underline-opacity-0 link-underline-opacity-50-hover">
-                                    More info <i class="bi bi-link-45deg"></i>
-                                </a>
-                            </div>
-                            <!--end::Small Box Widget 4-->
-                        </div>
-                        <!--end::Col-->
                     </div>
-                    <!--end::Row-->
-                    <!--begin::Row-->
-                    <div class="row">
-                  
+                    <!-- Users -->
+                    <div class="col-lg-3 col-6">
+                        <div class="small-box text-bg-primary">
+                            <div class="inner">
+                                <h3>@(users?.Count.ToString() ?? "…")</h3>
+                                <p>Total Users</p>
+                            </div>
+                            <svg class="small-box-icon" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M6.25 6.375a4.125 4.125 0 118.25 0 4.125 4.125 0 01-8.25 0zM3.25 19.125a7.125 7.125 0 0114.25 0v.003l-.001.119a.75.75 0 01-.363.63 13.067 13.067 0 01-6.761 1.873c-2.472 0-4.786-.684-6.76-1.873a.75.75 0 01-.364-.63l-.001-.122z" />
+                            </svg>
+                            <a href="/users" class="small-box-footer link-light link-underline-opacity-0 link-underline-opacity-50-hover">
+                                Manage <i class="bi bi-link-45deg"></i>
+                            </a>
+                        </div>
                     </div>
-                    <!-- /.row (main row) -->
+
+                 
+
+                    <!-- Print Jobs -->
+                    <div class="col-lg-3 col-6">
+                        <div class="small-box text-bg-warning">
+                            <div class="inner">
+                                <h3>@(printerStatus?.QueueDepth + printerStatus?.FailedCount ?? 0)</h3>
+                                <p>Print Jobs (@(printerStatus?.FailedCount ?? 0) failed)</p>
+                            </div>
+                            <svg class="small-box-icon" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M5.625 1.5c-1.036 0-1.875.84-1.875 1.875v17.25c0 1.035.84 1.875 1.875 1.875h12.75c1.035 0 1.875-.84 1.875-1.875V12.75A3.75 3.75 0 0016.5 9h-1.875a1.875 1.875 0 01-1.875-1.875V5.25A3.75 3.75 0 009 1.5H5.625z" />
+                                <path d="M12.971 1.816A5.23 5.23 0 0114.25 5.25v1.875c0 .207.168.375.375.375H16.5a5.23 5.23 0 013.434 1.279 9.768 9.768 0 00-6.963-6.963z" />
+                            </svg>
+                            <a href="/printer" class="small-box-footer link-dark link-underline-opacity-0 link-underline-opacity-50-hover">
+                                View Jobs <i class="bi bi-link-45deg"></i>
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- API Health -->
+                    <div class="col-lg-3 col-6">
+                        <div class="small-box @(apiHealthy ? "text-bg-success" : "text-bg-danger")">
+                            <div class="inner">
+                                <h3>@apiHealthStatus.ToUpper()</h3>
+                                <p>API Health</p>
+                            </div>
+                            <svg class="small-box-icon" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                <path fill-rule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12zm13.36-1.814a.75.75 0 10-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 00-1.06 1.06l2.25 2.25a.75.75 0 001.14-.094l3.75-5.25z" clip-rule="evenodd" />
+                            </svg>
+                            <span class="small-box-footer link-light">
+                                GET /health
+                            </span>
+                        </div>
+                    </div>
+
                 </div>
-                <!--end::Container-->
+
+                <!-- Global error/success banners -->
+                @if (!string.IsNullOrEmpty(globalError))
+                {
+                    <div class="alert alert-danger alert-dismissible" role="alert">
+                        @globalError
+                        <button type="button" class="btn-close" @onclick="() => globalError = null"></button>
+                    </div>
+                }
+                @if (!string.IsNullOrEmpty(globalSuccess))
+                {
+                    <div class="alert alert-success alert-dismissible" role="alert">
+                        @globalSuccess
+                        <button type="button" class="btn-close" @onclick="() => globalSuccess = null"></button>
+                    </div>
+                }
+
+                <!-- ══════════════════════════════════════
+                     MAIN ROW: Right panels
+                     ══════════════════════════════════════ -->
+                <div class="row">
+
+                    <!-- ── Right column ─────────────────────────── -->
+                    <div class="col-lg-4 col-12">
+
+                        <!-- Current Account Card -->
+                        <div class="card mb-3">
+                            <div class="card-header">
+                                <h6 class="card-title mb-0">
+                                    <i class="bi bi-person-circle me-1"></i> Current Session
+                                    <small class="text-muted">GET /api/authentication/me/account</small>
+                                </h6>
+                            </div>
+                            <div class="card-body">
+                                @if (currentAccount != null)
+                                {
+                                    <dl class="row mb-0 small">
+                                        <dt class="col-5">Username</dt>
+                                        <dd class="col-7">@currentAccount.Username</dd>
+                                        <dt class="col-5">Email</dt>
+                                        <dd class="col-7">@currentAccount.Email</dd>
+                                        <dt class="col-5">Role</dt>
+                                        <dd class="col-7"><span class="@RoleBadge(currentAccount.Role)">@currentAccount.RoleLabel</span></dd>
+                                        <dt class="col-5">Status</dt>
+                                        <dd class="col-7">
+                                            <span class="@(currentAccount.IsActive ? "badge bg-success" : "badge bg-secondary")">
+                                                @(currentAccount.IsActive ? "Active" : "Inactive")
+                                            </span>
+                                        </dd>
+                                        <dt class="col-5">Token exp.</dt>
+                                        <dd class="col-7">@TokenExpired.ToString("dd MMM HH:mm")</dd>
+                                    </dl>
+                                }
+                                else
+                                {
+                                    <p class="text-muted mb-0 small">@(accountError ?? "Loading…")</p>
+                                }
+                            </div>
+                        </div>
+
+                        <!-- Printer Status Card -->
+                        <div class="card">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <h6 class="card-title mb-0">
+                                    <i class="bi bi-printer me-1"></i> Printer
+                                    <small class="text-muted">GET /api/printer/status</small>
+                                </h6>
+                                <span class="@(printerStatus?.IsConnected == true ? "badge bg-success" : "badge bg-danger")">
+                                    @(printerStatus?.IsConnected == true ? "ONLINE" : "OFFLINE")
+                                </span>
+                            </div>
+                            <div class="card-body">
+                                @if (printerStatus != null)
+                                {
+                                    <dl class="row mb-0 small">
+                                        <dt class="col-5">Mode</dt>
+                                        <dd class="col-7"><span class="badge bg-info">@(printerStatus.ActiveMode?.ToUpper() ?? "-")</span></dd>
+                                        <dt class="col-5">Paper</dt>
+                                        <dd class="col-7"><span class="@PaperBadge(printerStatus.PaperStatus)">@printerStatus.PaperStatus.ToUpper()</span></dd>
+                                        <dt class="col-5">Cover</dt>
+                                        <dd class="col-7">
+                                            <span class="@(printerStatus.CoverStatus == "closed" ? "badge bg-success" : "badge bg-warning text-dark")">
+                                                @printerStatus.CoverStatus.ToUpper()
+                                            </span>
+                                        </dd>
+                                        <dt class="col-5">Temp</dt>
+                                        <dd class="col-7">@printerStatus.TemperatureCelsius?.ToString("F1") °C</dd>
+                                        <dt class="col-5">Queue</dt>
+                                        <dd class="col-7">@printerStatus.PendingCount pending · @printerStatus.FailedCount failed</dd>
+                                        <dt class="col-5">Paper left</dt>
+                                        <dd class="col-7">
+                                            <div class="progress" style="height:8px">
+                                                <div class="progress-bar @(printerStatus.PaperRemainingPercent < 15 ? "bg-danger" : "bg-success")"
+                                                     style="width:@(printerStatus.PaperRemainingPercent?.ToString("F0") ?? "0")%"></div>
+                                            </div>
+                                            <small>@printerStatus.PaperRemainingPercent?.ToString("F0")% (~@printerStatus.EstimatedPrintsRemaining prints)</small>
+                                        </dd>
+                                    </dl>
+
+                                    @if (!string.IsNullOrEmpty(printerStatus.LastError))
+                                    {
+                                        <div class="alert alert-warning mt-2 mb-0 py-1 px-2 small">
+                                            <i class="bi bi-exclamation-triangle me-1"></i> @printerStatus.LastError
+                                        </div>
+                                    }
+                                }
+                                else
+                                {
+                                    <p class="text-muted small mb-0">Printer data unavailable</p>
+                                }
+                            </div>
+                            <div class="card-footer p-2">
+                                <a href="/printer" class="btn btn-sm btn-outline-primary w-100">
+                                    Open Printer Dashboard
+                                </a>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+                <!-- ══════════════════════════════════════
+                     RECENT PRINT JOBS  (GET /api/printer/jobs)
+                     ══════════════════════════════════════ -->
+                <div class="row mt-3">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <h5 class="card-title mb-0">
+                                    <i class="bi bi-list-ul me-1"></i> Recent Print Jobs
+                                    <small class="text-muted">GET /api/printer/jobs</small>
+                                </h5>
+                                <a href="/printer" class="btn btn-sm btn-outline-secondary">View All</a>
+                            </div>
+                            <div class="card-body p-0">
+                                @if (recentJobs?.Items.Count > 0)
+                                {
+                                    <div class="table-responsive">
+                                        <table class="table table-sm table-hover mb-0">
+                                            <thead class="table-light">
+                                                <tr>
+                                                    <th>Job ID</th>
+                                                    <th>Operation</th>
+                                                    <th>Mode</th>
+                                                    <th>Status</th>
+                                                    <th>Error</th>
+                                                    <th>Retries</th>
+                                                    <th>Time</th>
+                                                    <th></th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @foreach (var job in recentJobs.Items.Take(8))
+                                                {
+                                                    var j = job;
+                                                    <tr>
+                                                        <td><code class="small">@j.JobId</code></td>
+                                                        <td>@j.Operation</td>
+                                                        <td><span class="badge bg-secondary">@j.Connection.ToUpper()</span></td>
+                                                        <td><span class="@JobStatusBadge(j.Status)">@j.Status.ToUpper()</span></td>
+                                                        <td>
+                                                            @if (j.ErrorCode != null)
+                                                            {
+                                                                <span class="text-danger small" title="@j.ErrorDetail">@j.ErrorCode</span>
+                                                            }
+                                                        </td>
+                                                        <td>@j.RetryCount</td>
+                                                        <td><small>@j.CreatedAt.ToLocalTime().ToString("HH:mm:ss")</small></td>
+                                                        <td>
+                                                            @if (j.Status == "failed")
+                                                            {
+                                                                <button class="btn btn-xs btn-sm btn-warning" @onclick="() => ReprintJobAsync(j.JobId)">
+                                                                    Reprint
+                                                                </button>
+                                                            }
+                                                        </td>
+                                                    </tr>
+                                                }
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <p class="text-muted p-3 mb-0 small">No print jobs yet. Go to the <a href="/printer">Printer Dashboard</a> to queue a job.</p>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ══════════════════════════════════════
+                     API ACTIVITY LOG  (this session)
+                     ══════════════════════════════════════ -->
+                <div class="row mt-3 mb-3">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <h5 class="card-title mb-0">
+                                    <i class="bi bi-terminal me-1"></i> API Activity Log
+                                    <small class="text-muted">(this session)</small>
+                                </h5>
+                                <button class="btn btn-sm btn-outline-secondary" @onclick="() => activityLog.Clear()">Clear</button>
+                            </div>
+                            <div class="card-body p-2" style="max-height:200px;overflow-y:auto">
+                                @if (activityLog.Count == 0)
+                                {
+                                    <p class="text-muted small mb-0">No activity yet.</p>
+                                }
+                                else
+                                {
+                                    @foreach (var entry in activityLog.AsEnumerable().Reverse())
+                                    {
+                                        <div class="small @(entry.IsError ? "text-danger" : "text-success")">
+                                            <span class="text-muted">[@entry.Time]</span>
+                                            <span class="badge @(entry.IsError ? "bg-danger" : "bg-success") me-1">@entry.Method</span>
+                                            <code>@entry.Endpoint</code>
+                                            <span>→ @entry.Result</span>
+                                        </div>
+                                    }
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
             </div>
-            <!--end::App Content-->
-        </main>
-        <!--end::App Main-->
-        <!--begin::Footer-->
-        <AdminFooter/>
-        <!--end::Footer-->
-    </div>
-    <!--end::App Wrapper-->
-    <!--begin::Script-->
-    <!--begin::Third Party Plugin(OverlayScrollbars)-->
-    <script src="https://cdn.jsdelivr.net/npm/overlayscrollbars@2.11.0/browser/overlayscrollbars.browser.es6.min.js"
-            crossorigin="anonymous"></script>
-    <!--end::Third Party Plugin(OverlayScrollbars)--><!--begin::Required Plugin(popperjs for Bootstrap 5)-->
-    <script src="https://cdn.jsdelivr.net/npm/@@popperjs/core@2.11.8/dist/umd/popper.min.js"
-            crossorigin="anonymous"></script>
-    <!--end::Required Plugin(popperjs for Bootstrap 5)--><!--begin::Required Plugin(Bootstrap 5)-->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/js/bootstrap.min.js"
-            crossorigin="anonymous"></script>
-    <!--end::Required Plugin(Bootstrap 5)--><!--begin::Required Plugin(AdminLTE)-->
-    <script src="/dist/js/adminlte.js"></script>
-    <!--end::Required Plugin(AdminLTE)--><!--begin::OverlayScrollbars Configure-->
-    <script>
-        const SELECTOR_SIDEBAR_WRAPPER = '.sidebar-wrapper';
-        const Default = {
-        scrollbarTheme: 'os-theme-light',
-        scrollbarAutoHide: 'leave',
-        scrollbarClickScroll: true,
-        };
-        document.addEventListener('DOMContentLoaded', function () {
-        const sidebarWrapper = document.querySelector(SELECTOR_SIDEBAR_WRAPPER);
+        </div>
 
-        // Disable OverlayScrollbars on mobile devices to prevent touch interference
-        const isMobile = window.innerWidth <= 992;
+        <AdminFooter />
+    </main>
+</div>
 
-        if (
-        sidebarWrapper &&
-        OverlayScrollbarsGlobal?.OverlayScrollbars !== undefined &&
-        !isMobile
-        ) {
-        OverlayScrollbarsGlobal.OverlayScrollbars(sidebarWrapper, {
-        scrollbars: {
-        theme: Default.scrollbarTheme,
-        autoHide: Default.scrollbarAutoHide,
-        clickScroll: Default.scrollbarClickScroll,
-        },
-        });
-        }
-        });
-    </script>
-    <!--end::OverlayScrollbars Configure--><!--begin::Color Mode Toggle (#6010)-->
-    <script>
-        (() => {
-        'use strict';
-
-        const STORAGE_KEY = 'lte-theme';
-
-        const getStoredTheme = () => localStorage.getItem(STORAGE_KEY);
-        const setStoredTheme = (theme) => localStorage.setItem(STORAGE_KEY, theme);
-
-        const prefersDark = () => globalThis.matchMedia('(prefers-color-scheme: dark)').matches;
-
-        const getPreferredTheme = () => {
-        const stored = getStoredTheme();
-        if (stored) return stored;
-        return prefersDark() ? 'dark' : 'light';
-        };
-
-        const setTheme = (theme) => {
-        const resolved = theme === 'auto' ? (prefersDark() ? 'dark' : 'light') : theme;
-        document.documentElement.setAttribute('data-bs-theme', resolved);
-        };
-
-        setTheme(getPreferredTheme());
-
-        const showActiveTheme = (theme) => {
-        // Highlight the active dropdown option
-        document.querySelectorAll('[data-bs-theme-value]').forEach((el) => {
-        el.classList.remove('active');
-        el.setAttribute('aria-pressed', 'false');
-        const check = el.querySelector('.bi-check-lg');
-        if (check) check.classList.add('d-none');
-        });
-        const active = document.querySelector(`[data-bs-theme-value="${theme}"]`);
-        if (active) {
-        active.classList.add('active');
-        active.setAttribute('aria-pressed', 'true');
-        const check = active.querySelector('.bi-check-lg');
-        if (check) check.classList.remove('d-none');
-        }
-        // Sync the topbar trigger icon
-        document.querySelectorAll('[data-lte-theme-icon]').forEach((icon) => {
-        icon.classList.toggle('d-none', icon.dataset.lteThemeIcon !== theme);
-        });
-        };
-
-        globalThis.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
-        const stored = getStoredTheme();
-        if (!stored || stored === 'auto') setTheme(getPreferredTheme());
-        });
-
-        document.addEventListener('DOMContentLoaded', () => {
-        showActiveTheme(getPreferredTheme());
-        document.querySelectorAll('[data-bs-theme-value]').forEach((toggle) => {
-        toggle.addEventListener('click', () => {
-        const theme = toggle.getAttribute('data-bs-theme-value');
-        setStoredTheme(theme);
-        setTheme(theme);
-        showActiveTheme(theme);
-        });
-        });
-        });
-        })();
-    </script>
-    <!--end::Color Mode Toggle-->
-    <!-- OPTIONAL SCRIPTS -->
-    <!-- sortablejs -->
-    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"
-            crossorigin="anonymous"></script>
-
-    <!-- sortablejs -->
-    <script>
-        new Sortable(document.querySelector('.connectedSortable'), {
-        group: 'shared',
-        handle: '.card-header',
-        });
-
-        const cardHeaders = document.querySelectorAll('.connectedSortable .card-header');
-        cardHeaders.forEach((cardHeader) => {
-        cardHeader.style.cursor = 'move';
-        });
-    </script>
-
-    <!-- apexcharts -->
-    <script src="https://cdn.jsdelivr.net/npm/apexcharts@3.37.1/dist/apexcharts.min.js"
-            integrity="sha256-+vh8GkaU7C9/wbSLIcwq82tQ2wTf44aOHA8HlBMwRI8="
-            crossorigin="anonymous"></script>
-
-    <!-- ChartJS -->
-    <script>
-        // NOTICE!! DO NOT USE ANY OF THIS JAVASCRIPT
-        // IT'S ALL JUST JUNK FOR DEMO
-        // ++++++++++++++++++++++++++++++++++++++++++
-
-        const sales_chart_options = {
-        series: [
-        {
-        name: 'Digital Goods',
-        data: [28, 48, 40, 19, 86, 27, 90],
-        },
-        {
-        name: 'Electronics',
-        data: [65, 59, 80, 81, 56, 55, 40],
-        },
-        ],
-        chart: {
-        height: 300,
-        type: 'area',
-        toolbar: {
-        show: false,
-        },
-        },
-        legend: {
-        show: false,
-        },
-        colors: ['#0d6efd', '#20c997'],
-        dataLabels: {
-        enabled: false,
-        },
-        stroke: {
-        curve: 'smooth',
-        },
-        xaxis: {
-        type: 'datetime',
-        categories: [
-        '2023-01-01',
-        '2023-02-01',
-        '2023-03-01',
-        '2023-04-01',
-        '2023-05-01',
-        '2023-06-01',
-        '2023-07-01',
-        ],
-        },
-        tooltip: {
-        x: {
-        format: 'MMMM yyyy',
-        },
-        },
-        };
-
-        const sales_chart = new ApexCharts(
-        document.querySelector('#revenue-chart'),
-        sales_chart_options,
-        );
-        sales_chart.render();
-    </script>
-
-    <!-- jsvectormap -->
-    <script src="https://cdn.jsdelivr.net/npm/jsvectormap@1.5.3/dist/js/jsvectormap.min.js"
-            integrity="sha256-/t1nN2956BT869E6H4V1dnt0X5pAQHPytli+1nTZm2Y="
-            crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/jsvectormap@1.5.3/dist/maps/world.js"
-            integrity="sha256-XPpPaZlU8S/HWf7FZLAncLg2SAkP8ScUTII89x9D3lY="
-            crossorigin="anonymous"></script>
-
-    <!-- jsvectormap -->
-    <script>
-        // World map by jsVectorMap
-        new jsVectorMap({
-        selector: '#world-map',
-        map: 'world',
-        });
-
-        // Sparkline charts
-        const option_sparkline1 = {
-        series: [
-        {
-        data: [1000, 1200, 920, 927, 931, 1027, 819, 930, 1021],
-        },
-        ],
-        chart: {
-        type: 'area',
-        height: 50,
-        sparkline: {
-        enabled: true,
-        },
-        },
-        stroke: {
-        curve: 'straight',
-        },
-        fill: {
-        opacity: 0.3,
-        },
-        yaxis: {
-        min: 0,
-        },
-        colors: ['#DCE6EC'],
-        };
-
-        const sparkline1 = new ApexCharts(document.querySelector('#sparkline-1'), option_sparkline1);
-        sparkline1.render();
-
-        const option_sparkline2 = {
-        series: [
-        {
-        data: [515, 519, 520, 522, 652, 810, 370, 627, 319, 630, 921],
-        },
-        ],
-        chart: {
-        type: 'area',
-        height: 50,
-        sparkline: {
-        enabled: true,
-        },
-        },
-        stroke: {
-        curve: 'straight',
-        },
-        fill: {
-        opacity: 0.3,
-        },
-        yaxis: {
-        min: 0,
-        },
-        colors: ['#DCE6EC'],
-        };
-
-        const sparkline2 = new ApexCharts(document.querySelector('#sparkline-2'), option_sparkline2);
-        sparkline2.render();
-
-        const option_sparkline3 = {
-        series: [
-        {
-        data: [15, 19, 20, 22, 33, 27, 31, 27, 19, 30, 21],
-        },
-        ],
-        chart: {
-        type: 'area',
-        height: 50,
-        sparkline: {
-        enabled: true,
-        },
-        },
-        stroke: {
-        curve: 'straight',
-        },
-        fill: {
-        opacity: 0.3,
-        },
-        yaxis: {
-        min: 0,
-        },
-        colors: ['#DCE6EC'],
-        };
-
-        const sparkline3 = new ApexCharts(document.querySelector('#sparkline-3'), option_sparkline3);
-        sparkline3.render();
-    </script>
-    <!--end::Script-->
 </body>
 </AuthorizeView>
- @code{
-	public int UserId { get; set; }
-	public string Email { get; set; } = string.Empty;
-	public string Username { get; set; }=string.Empty;
-	public string Role { get; set; } = string.Empty;
-	public string Token { get; set; } = string.Empty;
-	public DateTime TokenExpired { get; set;}
-	public DateTime CurrentTime { get; set; }
 
-	protected override async Task OnInitializedAsync()
-	{
-	  await InitialValues();
-	}
+@code {
+    public DateTime TokenExpired { get; set; }
+    private AccountDto? currentAccount;
+    private string? accountError;
 
-	private async Task InitialValues()
-	{
-		var state = await AuthStateProvider.GetAuthenticationStateAsync();
-		var user = state.User;
-		if (user.Identity!.IsAuthenticated)
-		{
-			Token = await AccessTokenService.GetToken();
-			Email = user.Claims.FirstOrDefault(x => x.Type == ClaimTypes.Email)?.Value!;
-			Role = user.Claims.FirstOrDefault(x => x.Type == ClaimTypes.Role)?.Value!;
-			UserId =int.Parse(user.Claims.FirstOrDefault(x => x.Type == ClaimTypes.NameIdentifier)?.Value!);
-			var expires = user.Claims.FirstOrDefault(x => x.Type == JwtRegisteredClaimNames.Exp)!.Value;
+    private List<AccountDto>? users;
 
-			if(long.TryParse(expires,out var exp))
-			{
-				TokenExpired = DateTimeOffset.FromUnixTimeSeconds(exp).LocalDateTime;
-			}
+    private PrinterStatusResponse? printerStatus;
+    private JobListResponse? recentJobs;
 
-		}
-	}
+    private string apiHealthStatus = "…";
+    private bool apiHealthy;
+
+    private readonly List<ApiLogEntry> activityLog = new();
+
+    private string? globalError;
+    private string? globalSuccess;
+    private System.Threading.Timer? _timer;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var state = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = state.User;
+        if (user.Identity?.IsAuthenticated == true)
+        {
+            var exp = user.Claims.FirstOrDefault(x => x.Type == JwtRegisteredClaimNames.Exp)?.Value;
+            if (long.TryParse(exp, out var ts))
+                TokenExpired = DateTimeOffset.FromUnixTimeSeconds(ts).LocalDateTime;
+        }
+
+        await Task.WhenAll(
+            LoadCurrentAccountAsync(),
+            LoadUsersCountAsync(),
+            LoadPrinterDataAsync(),
+            LoadHealthAsync()
+        );
+
+        _timer = new System.Threading.Timer(async _ =>
+        {
+            await LoadPrinterDataAsync();
+            await LoadHealthAsync();
+            await InvokeAsync(StateHasChanged);
+        }, null, 5000, 5000);
+    }
+
+    private async Task LoadCurrentAccountAsync()
+    {
+        var (account, error) = await UserApi.GetCurrentAccountAsync();
+        currentAccount = account;
+        accountError = error;
+        Log("GET", "api/authentication/me/account", account != null ? "200 OK" : error ?? "error", account == null);
+    }
+
+    private async Task LoadUsersCountAsync()
+    {
+        var (list, _) = await UserApi.GetAllAsync();
+        users = list;
+        Log("GET", "api/users", list != null ? $"200 OK ({list.Count} users)" : "error", list == null);
+    }
+
+    private async Task LoadPrinterDataAsync()
+    {
+        printerStatus = await PrinterApi.GetStatusAsync();
+        recentJobs = await PrinterApi.GetJobsAsync(pageSize: 8);
+    }
+
+    private async Task LoadHealthAsync()
+    {
+        var (status, healthy) = await UserApi.GetHealthAsync();
+        apiHealthStatus = status;
+        apiHealthy = healthy;
+        Log("GET", "health", $"{status}", !healthy);
+    }
+
+    private async Task ReprintJobAsync(string jobId)
+    {
+        var (ok, job, error) = await PrinterApi.ReprintAsync(jobId);
+        Log("POST", "api/printer/reprint", ok ? $"202 Accepted ({job?.JobId})" : error, !ok);
+        if (ok) globalSuccess = $"Reprint queued as job {job?.JobId}";
+        else globalError = error;
+        await LoadPrinterDataAsync();
+    }
+
+    private void Log(string method, string endpoint, string result, bool isError)
+    {
+        activityLog.Add(new ApiLogEntry
+        {
+            Time = DateTime.Now.ToString("HH:mm:ss"),
+            Method = method,
+            Endpoint = endpoint,
+            Result = result,
+            IsError = isError
+        });
+        if (activityLog.Count > 50) activityLog.RemoveAt(0);
+    }
+
+    private static string RoleBadge(int role) => role switch
+    {
+        1 => "badge bg-danger",
+        2 => "badge bg-primary",
+        3 => "badge bg-warning text-dark",
+        _ => "badge bg-secondary"
+    };
+
+    private static string JobStatusBadge(string s) => s switch
+    {
+        "completed"  => "badge bg-success",
+        "failed"     => "badge bg-danger",
+        "processing" => "badge bg-primary",
+        "retrying"   => "badge bg-warning text-dark",
+        _            => "badge bg-secondary"
+    };
+
+    private static string PaperBadge(string p) => p switch
+    {
+        "ok"  => "badge bg-success",
+        "low" => "badge bg-warning text-dark",
+        "out" => "badge bg-danger",
+        _     => "badge bg-secondary"
+    };
+
+    public void Dispose() => _timer?.Dispose();
+
+    private record ApiLogEntry
+    {
+        public string Time { get; init; } = string.Empty;
+        public string Method { get; init; } = string.Empty;
+        public string Endpoint { get; init; } = string.Empty;
+        public string Result { get; init; } = string.Empty;
+        public bool IsError { get; init; }
+    }
 }

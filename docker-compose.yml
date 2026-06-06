@@ -1,0 +1,34 @@
+version: "3.9"
+
+services:
+  printbridge-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "5160:5160"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__DefaultConnection=Server=db;Database=PrintBridgeDB;User Id=sa;Password=YourStr0ngPass!;TrustServerCertificate=True;
+      - Printer__LogDirectory=/app/logs
+    volumes:
+      - printer_logs:/app/logs
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      ACCEPT_EULA: "Y"
+      SA_PASSWORD: "YourStr0ngPass!"
+    ports:
+      - "1433:1433"
+    healthcheck:
+      test: /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P "YourStr0ngPass!" -Q "SELECT 1" || exit 1
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  printer_logs:

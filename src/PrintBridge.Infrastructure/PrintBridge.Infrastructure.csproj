@@ -24,6 +24,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\PrintBridge.Application\PrintBridge.Application.csproj" />
+    <ProjectReference Include="..\PrintBridge.Domain\PrintBridge.Domain.csproj" />
   </ItemGroup>
 
   <ItemGroup>
