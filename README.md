@@ -49,7 +49,16 @@ Copy `src/PrintBridge.WebApi/appsettings.json` and set:
 }
 ```
 
-### 2. Run (single command)
+### 2. Default Login Credentials
+
+| Field | Value |
+|-------|-------|
+| Username | `admin` |
+| Password | `Admin@123` |
+
+> Navigate to `http://localhost:5172` and log in with the credentials above.
+
+### 3. Run (single command)
 
 ```bash
 # API (port 5160)
@@ -164,7 +173,7 @@ Each line is a JSON object:
 | `PAPER_OUT` | No paper in printer | "No paper detected" |
 | `PAPER_JAM` | Paper jam | "Paper jam detected" |
 | `COVER_OPEN` | Printer cover open | "Printer cover is open" |
-| `OVERHEAT` | Temperature > 70°C | "Printer overheated — cooling down" |
+| `OVERHEAT` | Temperature > 80°C (KP-301H spec) | "Printer overheated — cooling down" |
 | `COMM_ERROR` | Connection lost | "Communication error" |
 | `UNKNOWN_COMMAND` | Bad command | "Unknown or unsupported command" |
 

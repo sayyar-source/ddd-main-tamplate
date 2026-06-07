@@ -314,8 +314,8 @@ public class PrinterManager : BackgroundService
                 await RetryConnectAsync(ct);
             }
 
-            // Simulate temperature fluctuation
-            _temperature = Math.Clamp(_temperature + (float)(Random.Shared.NextDouble() * 2 - 1), 30f, 75f);
+            // Simulate temperature fluctuation (KP-301H: warn >65°C, stop >80°C)
+            _temperature = Math.Clamp(_temperature + (float)(Random.Shared.NextDouble() * 2 - 1), 30f, 85f);
         }
     }
 
@@ -323,14 +323,14 @@ public class PrinterManager : BackgroundService
     {
         if (_paperPercent <= 0) return PrinterErrorCode.PAPER_OUT;
         if (_coverOpen) return PrinterErrorCode.COVER_OPEN;
-        if (_temperature > 70f) return PrinterErrorCode.OVERHEAT;
+        if (_temperature > 80f) return PrinterErrorCode.OVERHEAT;
         return PrinterErrorCode.None;
     }
 
     private void UpdateHardwareAfterPrint()
     {
         _paperPercent = Math.Max(0, _paperPercent - 0.8f);
-        _temperature = Math.Min(75f, _temperature + 0.5f);
+        _temperature = Math.Min(85f, _temperature + 0.5f);
     }
 
     private void FailJob(PrintJob job, PrinterErrorCode error, string detail)
@@ -364,7 +364,7 @@ public class PrinterManager : BackgroundService
             {
                 case PrinterErrorCode.PAPER_OUT: _paperPercent = 0; break;
                 case PrinterErrorCode.COVER_OPEN: _coverOpen = true; break;
-                case PrinterErrorCode.OVERHEAT: _temperature = 72f; break;
+                case PrinterErrorCode.OVERHEAT: _temperature = 82f; break;
                 default: _lastError = DescribeError(code); break;
             }
         }
@@ -378,7 +378,7 @@ public class PrinterManager : BackgroundService
             {
                 case PrinterErrorCode.PAPER_OUT: _paperPercent = 100f; break;
                 case PrinterErrorCode.COVER_OPEN: _coverOpen = false; break;
-                case PrinterErrorCode.OVERHEAT: _temperature = 34f; break;
+                case PrinterErrorCode.OVERHEAT: _temperature = 60f; break;
             }
         }
         _lastError = null;

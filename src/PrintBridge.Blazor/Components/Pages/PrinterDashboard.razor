@@ -125,7 +125,7 @@
                                 <tr>
                                     <td>Temperature</td>
                                     <td>
-                                        <span class="@(status.TemperatureCelsius > 68 ? "text-danger" : "")">
+                                        <span class="@(status.TemperatureCelsius > 65 ? "text-danger" : "")">
                                             @status.TemperatureCelsius?.ToString("F1") °C
                                         </span>
                                     </td>
@@ -159,13 +159,13 @@
                 <div class="card-body">
                     <ul class="nav nav-tabs mb-3">
                         <li class="nav-item">
-                            <a class="@TabClass("text")" href="#" @onclick='() => printTab = "text"' @onclick:preventDefault>Text</a>
+                            <a class="@TabClass("text")"  @onclick='() => printTab = "text"' @onclick:preventDefault>Text</a>
                         </li>
                         <li class="nav-item">
-                            <a class="@TabClass("image")" href="#" @onclick='() => printTab = "image"' @onclick:preventDefault>Image</a>
+                            <a class="@TabClass("image")"  @onclick='() => printTab = "image"' @onclick:preventDefault>Image</a>
                         </li>
                         <li class="nav-item">
-                            <a class="@TabClass("qr")" href="#" @onclick='() => printTab = "qr"' @onclick:preventDefault>QR</a>
+                            <a class="@TabClass("qr")" @onclick='() => printTab = "qr"' @onclick:preventDefault>QR</a>
                         </li>
                     </ul>
 
@@ -424,7 +424,7 @@
         else bannerError = error;
     }
 
-    private string TabClass(string tab) => printTab == tab ? "nav-link active" : "nav-link";
+    private string TabClass(string tab) => printTab == tab ? "nav-link active cursor-pointer" : "nav-link cursor-pointer";
     private string ConnectBtnClass(string mode) => connectMode == mode ? "btn btn-primary" : "btn btn-outline-primary";
 
     private static string StatusBadge(string s) => s switch
